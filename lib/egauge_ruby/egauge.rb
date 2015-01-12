@@ -4,6 +4,8 @@ require 'json'
 
 module EgaugeRuby
   class Egauge
-    # more code here
+    def self.hi
+      puts "It works"
+    end
   end
 end
