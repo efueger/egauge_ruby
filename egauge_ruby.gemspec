@@ -24,4 +24,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "awesome_print", "~>1.6"
   spec.add_development_dependency "rest-client", "~> 1.7"
   spec.add_development_dependency "nokogiri", "~> 1.6"
+  spec.add_development_dependency "pry", "~> 0.10"
 end
