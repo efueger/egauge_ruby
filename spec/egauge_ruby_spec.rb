@@ -30,10 +30,24 @@ module EgaugeRuby
       end
     end
 
+    describe "#registers" do
+      it "returns an array of the registers associated with the request"
+    end
+
     describe '#current' do
-      it "has a length > 1" do
-        expect(doc.to_xml.length).to be > 1
-      end
+      it "returns a hash of register(s) attributes"
+      it "filters values based on an optional filter hash argument"
+    end
+
+    describe "#last_day" do
+      it "gets values for the last day(24 hours)"
+      it "returns a hash of the average value for each register"
+    end
+
+    describe "updates all attributes on request response" do
+      it "uses the response to update all attributes"
+      it "clears the old registers"
+      it "creates new registers for new response data"
     end
   end
 end
