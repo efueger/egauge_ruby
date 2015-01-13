@@ -1,2 +1,2 @@
 require "egauge_ruby/version"
-require "egauge_ruby/egauge"
+require "egauge_ruby/request"

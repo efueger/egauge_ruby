@@ -38,8 +38,7 @@ module EgaugeRuby
 # want to get the measurements for the last 24 hours
 # want to calculate totals and maybe averages?
 
-  class Egauge
-    # maybe rename Egauge to Request ??
+  class Request
 
     # Outcomes
     # want to fetch the current measurements for all 'registers'
@@ -74,7 +73,7 @@ module EgaugeRuby
     # 4. returns the hash
 
     def current
-      parse(get_current)
+      registers.map(&:to_hash)
     end
 
     def get_current

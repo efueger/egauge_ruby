@@ -1,10 +1,10 @@
 require "spec_helper"
 
 module EgaugeRuby
-  describe Egauge do
+  describe Request do
 
     let(:url) { "http://22north.egaug.es/cgi-bin/egauge" }
-    subject { EgaugeRuby::Egauge.new(url) }
+    subject { EgaugeRuby::Request.new(url) }
     let(:response) {subject.get_current }
 
     it "isn't nil when instantiated" do
