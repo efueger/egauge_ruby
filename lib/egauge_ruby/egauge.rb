@@ -21,13 +21,17 @@ module EgaugeRuby
     # want to get the measurements for the last 24 hours
     # want to calculate totals and maybe averages?
     ##
+    attr_accessor :url, :query_arguments
+
+    def initialize(url, query_arguments=[])
+      @url, @query_arguments = url, query_arguments
+    end
 
     def current
       parse(get_current)
     end
 
     def get_current
-      url = "http://22north.egaug.es/cgi-bin/egauge"
       RestClient.get(url) do |response, request, result, &block|
         case response.code
         when 200
