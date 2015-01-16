@@ -6,7 +6,7 @@ module EgaugeRuby
     let(:url) { "http://22north.egaug.es/cgi-bin/egauge" }
     let(:query_args) { ['v1', 'tot', 'inst'] }
     subject { EgaugeRuby::Request.new(base_url: url, query_arguments: query_args) }
-    let(:response) {subject.get_current }
+    let(:response) {subject.get_xml }
 
     it "isn't nil when instantiated" do
       expect(subject.nil?).to eq(false)
@@ -35,31 +35,33 @@ module EgaugeRuby
       end
     end
 
-    describe '#get_current' do
+    describe '#get_xml' do
 
       it "returns a 200 HTTP code" do
-        expect(subject.get_current.code).to eq(200)
+        expect(subject.get_xml.code).to eq(200)
       end
 
       it "returns some XML" do
-        expect(subject.get_current.body.length).to be > 20
+        expect(subject.get_xml.body.length).to be > 20
       end
-    end
-
-    describe '#get_stored' do
-      let(:type) { "stored" }
-      subject { EgaugeRuby::Request.new(base_url: url, request_type: type) }
-
-      it "has a request URL containing 'egauge-show'" do
-        expect(subject.full_url).to include("egauge-show")
+      describe "with a current request" do
       end
 
-      it "returns a 200 HTTP code" do
-        expect(subject.get_stored.code).to eq(200)
-      end
+      describe "with a stored request" do
+        let(:type) { "stored" }
+        subject { EgaugeRuby::Request.new(base_url: url, request_type: type) }
 
-      it "returns some XML" do
-        expect(subject.get_stored.body.length).to be > 20
+        it "has a request URL containing 'egauge-show'" do
+          expect(subject.full_url).to include("egauge-show")
+        end
+
+        it "returns a 200 HTTP code" do
+          expect(subject.get_xml.code).to eq(200)
+        end
+
+        it "returns some XML" do
+          expect(subject.get_xml.body.length).to be > 20
+        end
       end
     end
 

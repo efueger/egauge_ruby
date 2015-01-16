@@ -68,7 +68,7 @@ module EgaugeRuby
       @request_type                 = request_type || config[:request_type]
       @query_arguments              = query_arguments || config[:query_arguments]
       @full_url                     = join_url
-      @document                     = parse(get_current)
+      @document                     = parse(get_xml)
       @timestamp                    = set_timestamp
       @interval                     = set_interval
       @registers                    = []
@@ -140,18 +140,7 @@ module EgaugeRuby
       results
     end
 
-    def get_stored
-      RestClient.get(full_url) do |response, request, result, &block|
-        case response.code
-        when 200
-          response
-        else
-          response.return!(request, result, &block)
-        end
-      end
-    end
-
-    def get_current
+    def get_xml
       RestClient.get(full_url) do |response, request, result, &block|
         case response.code
         when 200
