@@ -25,39 +25,7 @@ module EgaugeRuby
       XML
     }
 
-    let(:url) { "http://22north.egaug.es" }
-
-    let!(:current_request) do
-      request = EgaugeRuby::Request.new(
-          base_url: url,
-          query_arguments: ['tot', 'inst']
-        )
-      request.document = request.parse(current_xml)
-      request.set_registers
-      request
-    end
-
-    subject { EgaugeRuby::Gauge.new(url) }
-
-    describe '#current' do
-      it "returns a hash with name => power for each register" do
-        subject.request = current_request
-        results = subject.current
-        expect(results["Grid"]).to eq(462)
-        expect(results.count).to eq(13)
-      end
-    end
-  end
-
-  describe Request do
-
-    # Need to:
-    # 1. Use a canned XML document to test against
-    # 2. Write high level API specs instead of low level
-    # 3. Finish with high level HTTP requests using a lib ...
-    # ... like VCR or Rspec Mocks
-
-    let(:stored_xml) {
+  let(:stored_xml) {
       <<-XML
       <?xml version="1.0" encoding="UTF-8" ?>
       <!DOCTYPE group PUBLIC "-//ESL/DTD eGauge 1.0//EN" "http://www.egauge.net/DTD/egauge-hist.dtd">
@@ -82,6 +50,53 @@ module EgaugeRuby
       XML
     }
 
+    let(:url) { "http://22north.egaug.es" }
+
+    let!(:fake_request) do
+      request = EgaugeRuby::Request.new(base_url: url, query_arguments: ['tot', 'inst'])
+      request.response = current_xml
+      request
+    end
+
+    subject { EgaugeRuby::Gauge.new(url) }
+
+    describe '#current' do
+      it "returns a hash with name => power for each register" do
+        subject.request = fake_request # mock out the request
+        subject.data = Data.new(fake_request)
+        results = subject.current
+        expect(results["Grid"]).to eq(462)
+        expect(results.count).to eq(13)
+      end
+    end
+
+    describe '#url' do
+      it 'has a url and it is valid' do
+        expect(subject.url).to eq("http://22north.egaug.es")
+      end
+    end
+
+    describe '#request' do
+      it 'has a request object' do
+        expect(subject.request).to_not be(nil)
+        expect(subject.request.class).to eq(EgaugeRuby::Request)
+      end
+    end
+
+    describe '#data' do
+      it 'has a data object' do
+        expect(subject.data).to_not be(nil)
+        expect(subject.data.class).to eq(EgaugeRuby::Data)
+      end
+    end
+  end
+
+  describe Data do
+
+  end
+
+  describe Request do
+
     let(:url) { "http://22north.egaug.es/cgi-bin/egauge" }
     let(:query_args) { ['v1', 'tot', 'inst'] }
     subject { EgaugeRuby::Request.new(base_url: url, query_arguments: query_args) }
@@ -94,24 +109,9 @@ module EgaugeRuby
     describe "API arguments" do
       it "can request current measurements or historical"
 
-      it "can specify the API version 1" do
-        data_element = subject.document.xpath('//data')
+      it "can specify whether to include totals"
 
-        expect(data_element.class).to eq(Nokogiri::XML::NodeSet)
-        expect(data_element.children.length).to be >= 1
-      end
-
-      it "can specify whether to include totals" do
-        total_element = subject.document.xpath('//r[@rt="total"]').first
-
-        expect(total_element.attributes['rt'].value).to eq('total')
-      end
-
-      it "can request instantaneous values (power)" do
-        inst_element = subject.document.xpath('//r/i').first
-
-        expect(inst_element.name).to  eq('i')
-      end
+      it "can request instantaneous values (power)"
     end
 
     describe '#get_xml' do
@@ -123,12 +123,10 @@ module EgaugeRuby
       it "returns some XML" do
         expect(subject.get_xml.body.length).to be > 20
       end
-      describe "with a current request" do
-      end
 
       describe "with a stored request" do
         let(:type) { "stored" }
-        subject { EgaugeRuby::Request.new(base_url: url, request_type: type) }
+        subject { EgaugeRuby::Request.new(base_url: url, type: type) }
 
         it "has a request URL containing 'egauge-show'" do
           expect(subject.full_url).to include("egauge-show")
@@ -143,40 +141,12 @@ module EgaugeRuby
         end
       end
     end
-
-    describe '#parse' do
-      it '#parse turns XML into Ruby objects' do
-        expect(subject.parse(response).class).to eq(Nokogiri::XML::Document)
-      end
-    end
-
-    describe "#registers" do
-      it "returns an array of the registers associated with the request"
-      it "has a unit attribute corresponding to the regiister type"
-    end
-
-    describe '#current' do
-      it "returns a hash of register(s) attributes"
-      it "filters values based on an optional filter hash argument"
-    end
-
-    describe "#last_day" do
-      it "gets values for the last day(24 hours)"
-      it "returns a hash of the average value for each register"
-    end
-
-    describe "updates all attributes on request response" do
-      it "uses the response to update all attributes"
-      it "clears the old registers"
-      it "creates new registers for new response data"
-    end
   end
 
   describe Register do
-    it "is instantiated to a non-nil value"
     it "has a nil value for empty instance attributes"
     it "has attributes equal to the xml values passed in"
-    it "has a timestamp equal to the register that created it"
+    it "has a timestamp equal to the Data object that created it"
     it "has a unit attribute corresponding to the regiister type"
   end
 end

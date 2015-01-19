@@ -7,19 +7,118 @@ require 'nokogiri'
 
 module EgaugeRuby
   class Gauge
-    attr_accessor :request, :url
+    attr_accessor :request, :url, :data
 
     def initialize(url)
       @url = url
-      @request = EgaugeRuby::Request.new(base_url: url,
-                                         query_arguments: ['total', 'inst'])
+      @request = EgaugeRuby::Request.new(base_url: url, query_arguments: ['total', 'inst'])
+      @data = Data.new(request)
     end
 
     def current
       results = {}
-      request.registers.each { |r| results[r.name] = r.instantaneous }
+      data.registers.each { |r| results[r.name] = r.instantaneous }
       results
     end
+  end
+
+  class Data
+    attr_accessor :registers, :document, :timestamp, :interval, :request
+
+    def initialize(request)
+      @document = Nokogiri.parse(request.response)
+      @request = request
+      @timestamp = set_timestamp
+      @interval = set_interval
+      @registers = []
+
+      set_registers
+    end
+
+    def registers_to_hash
+      results = {}
+      registers.each {|r| results[r.name] = r.to_hash}
+      results
+    end
+
+    def set_timestamp
+      case request.type
+      when "current"
+        Time.at(document.xpath('//ts').text.to_i)
+      when "stored"
+        timestamp = document.xpath("//data").xpath("@time_stamp").text
+        Time.at(timestamp.hex)
+      else
+      end
+    end
+
+    def set_interval
+      case request.type
+      when "current"
+        1
+      when "stored"
+        interval = document.xpath("//data").xpath("@time_delta").text.to_i
+      else
+      end
+    end
+
+    def set_registers
+      @registers = []
+      case request.type
+      when "current"
+        xml_register_collection = document.xpath('//r')
+        xml_register_collection.each do |xml_reg|
+          create_register_obj(current_register_to_hash(xml_reg))
+        end
+      when "stored"
+        xml_register_values = document.xpath('//r')
+        xml_column_collection = document.xpath('//cname')
+
+        xml_register_values.each_with_index do |value_collection, row_index|
+          row_timestamp = timestamp - (row_index * interval)
+          values = value_collection.xpath('c')
+
+          values.each_with_index do |value, index|
+            register_column = xml_column_collection[index]
+            new_reg = stored_register_to_hash(value, row_timestamp, register_column)
+            create_register_obj(new_reg)
+          end
+        end
+      else
+      end
+    end
+
+    def create_register_obj(reg)
+      new_reg_obj = EgaugeRuby::Register.new(reg)
+      add_register(new_reg_obj)
+    end
+
+    def add_register(reg_obj)
+      registers.push(reg_obj)
+    end
+
+    def stored_register_to_hash(value, row_timestamp, register_column)
+      hash              = {}
+      hash[:timestamp]  = row_timestamp
+      hash[:interval]   = interval
+      hash[:name]       = register_column.text
+      hash[:type]       = register_column.attributes["t"].value
+      hash[:value]      = value.text.to_i
+      hash[:interval]   = document.xpath('//data').xpath("@time_delta").text.to_i
+      hash
+    end
+
+    def current_register_to_hash(reg)
+      hash = {}
+      hash[:timestamp]      = timestamp
+      hash[:interval]       = interval
+      hash[:name]           = reg.attributes["n"].value
+      hash[:type]           = reg.attributes["t"].value
+      hash[:value]          = reg.xpath("v").text.to_i
+      hash[:instantaneous]  = reg.xpath("i").text.to_i
+      hash
+    end
+
   end
 
   class Register
@@ -61,68 +160,16 @@ module EgaugeRuby
     end
   end
 
-# Fetches the current measurements for all 'registers'
-# parse the XML returned into one or more ruby objects
-#
-# record the time and the value and the category of
-# the measurement(s)
-#
-# convert measurements into a human readable form with a unit
-# export into a common data serialization format such as JSON
-#
-# want to() get the measurements for the last 24 hours
-# want to calculate totals and maybe averages?
-
   class Request
 
-    # Outcomes
-    # want to fetch the current measurements for all 'registers'
-    # parse the XML returned into one or more ruby objects
-    #
-    # want to record the time and the value and the category of
-    # the measurement(s)
-    #
-    # convert measurements into a human readable form with a unit
-    # export into a common data serialization format such as JSON
-    #
-    # want to get the measurements for the last 24 hours
-    # want to calculate totals and maybe averages?
+    attr_accessor :base_url, :type, :query_arguments, :full_url, :response
 
-    attr_accessor :base_url, :request_type, :query_arguments, :full_url,
-                  :registers, :document, :timestamp, :interval
-
-    def initialize(base_url:, request_type: "current", query_arguments: [], config: {})
+    def initialize(base_url:, type: "current", query_arguments: [], config: {})
       @base_url                     = base_url || config[:base_url]
-      @request_type                 = request_type || config[:request_type]
+      @type                         = type || config[:type]
       @query_arguments              = query_arguments || config[:query_arguments]
       @full_url                     = join_url
-      @document                     = parse(get_xml)
-      @timestamp                    = set_timestamp
-      @interval                     = set_interval
-      @registers                    = []
-
-      set_registers
-    end
-
-    def set_timestamp
-      case request_type
-      when "current"
-        Time.at(document.xpath('//ts').text.to_i)
-      when "stored"
-        timestamp = document.xpath("//data").xpath("@time_stamp").text
-        Time.at(timestamp.hex)
-      else
-      end
-    end
-
-    def set_interval
-      case request_type
-      when "current"
-        1
-      when "stored"
-        interval = document.xpath("//data").xpath("@time_delta").text.to_i
-      else
-      end
+      @response                     = get_xml
     end
 
     def join_query_args
@@ -134,18 +181,12 @@ module EgaugeRuby
       "?" + arguments.join('&')
     end
 
-    # Concatentate and Return:
-    # 1. base_url
-    # 2. query_type(current or hist)
-    # 3. string of query args
-    # Return String
-
     def join_url
       @base_url +  api_url + join_query_args
     end
 
     def api_url
-      case request_type
+      case type
       when "current"
         "/cgi-bin/egauge"
       when "stored"
@@ -153,17 +194,6 @@ module EgaugeRuby
       else
         ArgumentError "Request type not recognized\nPlease use either 'current' or 'stored'."
       end
-    end
-
-    def registers_to_hash
-      results = {}
-      registers.each {|r| results[r.name] = r.to_hash}
-      results
-    end
-
-    def reset!
-      document = parse(get_xml)
-      set_registers
     end
 
     def get_xml
@@ -175,76 +205,6 @@ module EgaugeRuby
           response.return!(request, result, &block)
         end
       end
-    end
-
-    def parse(response)
-      Nokogiri::XML(response)
-    end
-
-    def set_registers
-      @registers = []
-      case request_type
-      when "current"
-        xml_register_collection = document.xpath('//r')
-        xml_register_collection.each do |xml_reg|
-          create_register_obj(current_register_to_hash(xml_reg))
-        end
-      when "stored"
-        xml_register_values = document.xpath('//r')
-        xml_column_collection = document.xpath('//cname')
-
-        xml_register_values.each_with_index do |value_collection, row_index|
-          row_timestamp = timestamp - (row_index * interval)
-          values = value_collection.xpath('c')
-
-          values.each_with_index do |value, index|
-            register_column = xml_column_collection[index]
-            new_reg = stored_register_to_hash(value, row_timestamp, register_column)
-            create_register_obj(new_reg)
-          end
-        end
-      else
-      end
-    end
-    # Poor implementation
-    # instantaneous =  (value.text.to_i - document.xpath('//r')[index - 1].xpath('c')[index].text.to_i) if index > 0
-    # def get_instantaneous(row_set, index)
-    #   if index > 0
-    #     row_set[index - 1].xpath('c')[index].text
-    #   else
-    #     row_set[index].xpath('c')[index].text
-    #   end
-    # end
-
-    def create_register_obj(reg)
-      new_reg_obj = EgaugeRuby::Register.new(reg)
-      add_register(new_reg_obj)
-    end
-
-    def add_register(reg_obj)
-      registers.push(reg_obj)
-    end
-
-    def stored_register_to_hash(value, row_timestamp, register_column)
-      hash              = {}
-      hash[:timestamp]  = row_timestamp
-      hash[:interval]   = interval
-      hash[:name]       = register_column.text
-      hash[:type]       = register_column.attributes["t"].value
-      hash[:value]      = value.text.to_i
-      hash[:interval]   = document.xpath('//data').xpath("@time_delta").text.to_i
-      hash
-    end
-
-    def current_register_to_hash(reg)
-      hash = {}
-      hash[:timestamp]      = timestamp
-      hash[:interval]       = interval
-      hash[:name]           = reg.attributes["n"].value
-      hash[:type]           = reg.attributes["t"].value
-      hash[:value]          = reg.xpath("v").text.to_i
-      hash[:instantaneous]  = reg.xpath("i").text.to_i
-      hash
     end
   end
 end
