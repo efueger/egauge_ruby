@@ -6,6 +6,22 @@ require 'pry'
 require 'nokogiri'
 
 module EgaugeRuby
+  class Gauge
+    attr_accessor :request, :url
+
+    def initialize(url)
+      @url = url
+      @request = EgaugeRuby::Request.new(base_url: url,
+                                         query_arguments: ['total', 'inst'])
+    end
+
+    def current
+      results = {}
+      request.registers.each { |r| results[r.name] = r.instantaneous }
+      results
+    end
+  end
+
   class Register
     attr_accessor :timestamp, :interval, :name, :type, :value, :instantaneous
 
@@ -31,6 +47,18 @@ module EgaugeRuby
 
     def calc_instantaneous(another_register)
     end
+
+    def power
+      { name => instantaneous }
+    end
+
+    def to_json
+      result = []
+      result.push(
+        self.to_hash
+        )
+      JSON.pretty_generate(result)
+    end
   end
 
 # Fetches the current measurements for all 'registers'
@@ -42,7 +70,7 @@ module EgaugeRuby
 # convert measurements into a human readable form with a unit
 # export into a common data serialization format such as JSON
 #
-# want to get the measurements for the last 24 hours
+# want to() get the measurements for the last 24 hours
 # want to calculate totals and maybe averages?
 
   class Request
@@ -127,17 +155,15 @@ module EgaugeRuby
       end
     end
 
-    # Get the current values for all registers defined
-    #
-    # 1. loops through the registers
-    # 2. converts the values to a Ruby Hash
-    # 3. appends the each attriubute to a hash with name as key
-    # 4. returns the hash
-
-    def current
+    def registers_to_hash
       results = {}
-      registers.each {|r| results[r.name] = r}
+      registers.each {|r| results[r.name] = r.to_hash}
       results
+    end
+
+    def reset!
+      document = parse(get_xml)
+      set_registers
     end
 
     def get_xml
