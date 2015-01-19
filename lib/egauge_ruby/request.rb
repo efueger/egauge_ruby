@@ -20,6 +20,13 @@ module EgaugeRuby
       data.registers.each { |r| results[r.name] = r.instantaneous }
       results
     end
+
+    def stored(start_time, end_time, interval)
+      start_time = Time.parse(start_time)
+      end_time = Time.parse(end_time)
+      results = {}
+    end
+
   end
 
   class Data
