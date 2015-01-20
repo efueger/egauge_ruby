@@ -1,0 +1,12 @@
+machine:
+
+  timezone:
+    America/New_York # Set the timezone
+
+  # Version of ruby to use
+  ruby:
+    version:
+      2.1.2
+
+  # Add some environment variables
+  environment:
