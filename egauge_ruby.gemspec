@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~>10.4"
   spec.add_development_dependency "rspec", "~> 2.14"
   spec.add_development_dependency "awesome_print", "~>1.6"
-  spec.add_development_dependency "rest-client", "~> 1.7"
-  spec.add_development_dependency "nokogiri", "~> 1.6"
   spec.add_development_dependency "pry", "~> 0.10"
+  spec.add_runtime_dependency "rest-client", "~> 1.7"
+  spec.add_runtime_dependency "nokogiri", "~> 1.6"
 end
