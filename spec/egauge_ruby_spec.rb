@@ -25,31 +25,6 @@ module EgaugeRuby
       XML
     }
 
-  let(:stored_xml) {
-      <<-XML
-      <?xml version="1.0" encoding="UTF-8" ?>
-      <!DOCTYPE group PUBLIC "-//ESL/DTD eGauge 1.0//EN" "http://www.egauge.net/DTD/egauge-hist.dtd">
-      <group serial="0x24658c9e">
-      <data columns="11" time_stamp="0x54bd3810" time_delta="3600" epoch="0x4edbd230">
-       <cname t="P">Grid</cname>
-       <cname t="P">PV Array 1</cname>
-       <cname t="P">PV Array 1+</cname>
-       <cname t="P">PV  Array 2</cname>
-       <cname t="P">PV  Array 2+</cname>
-       <cname t="P">Fans + Halls?</cname>
-       <cname t="P">East front hall</cname>
-       <cname t="P">West front hall</cname>
-       <cname t="P">Recept East</cname>
-       <cname t="P">Recept West</cname>
-       <cname t="P">12kBtu Air Conditioning</cname>
-       <r><c>5421193561</c><c>10756242555</c><c>10921866253</c><c>-281442840478049</c><c>29400859770</c><c>5036790157</c><c>1808085281</c><c>579636989</c><c>31254526</c><c>238445467</c><c>2068764003</c></r>
-       <r><c>5419369049</c><c>10756260672</c><c>10921866253</c><c>-281442840445734</c><c>29400859770</c><c>5036782824</c><c>1808054322</c><c>579633211</c><c>31254516</c><c>238445444</c><c>2068597390</c></r>
-       <r><c>5417872932</c><c>10756272018</c><c>10921862673</c><c>-281442840430587</c><c>29400848011</c><c>5036775956</c><c>1808023286</c><c>579629785</c><c>31254506</c><c>238445417</c><c>2068310516</c></r>
-      </data>
-      </group>
-      XML
-    }
-
     let(:url) { "http://22north.egaug.es" }
 
     let!(:fake_request) do
@@ -71,12 +46,12 @@ module EgaugeRuby
     end
 
     describe '#stored' do
-      let(:stored_xml) {
+      let(:fake_stored) {
         <<-XML
         <?xml version="1.0" encoding="UTF-8" ?>
         <!DOCTYPE group PUBLIC "-//ESL/DTD eGauge 1.0//EN" "http://www.egauge.net/DTD/egauge-hist.dtd">
         <group serial="0x24658c9e">
-        <data columns="11" time_stamp="0x54bd3810" time_delta="3600" epoch="0x4edbd230">
+        <data columns="11" time_stamp="0x54bd8c70" time_delta="3600" epoch="0x4edbd230">
          <cname t="P">Grid</cname>
          <cname t="P">PV Array 1</cname>
          <cname t="P">PV Array 1+</cname>
@@ -88,6 +63,7 @@ module EgaugeRuby
          <cname t="P">Recept East</cname>
          <cname t="P">Recept West</cname>
          <cname t="P">12kBtu Air Conditioning</cname>
+         <r><c>5430750946</c><c>10756132228</c><c>10921869967</c><c>-281442840623218</c><c>29400865633</c><c>5036832069</c><c>1808270727</c><c>579659896</c><c>31254641</c><c>238445598</c><c>2070062510</c></r>
          <r><c>5429234588</c><c>10756151649</c><c>10921869967</c><c>-281442840607730</c><c>29400865633</c><c>5036825066</c><c>1808239954</c><c>579655680</c><c>31254616</c><c>238445579</c><c>2069880800</c></r>
          <r><c>5427592022</c><c>10756171604</c><c>10921869967</c><c>-281442840592215</c><c>29400865633</c><c>5036818058</c><c>1808208951</c><c>579651440</c><c>31254594</c><c>238445559</c><c>2069640867</c></r>
          <r><c>5426031496</c><c>10756190373</c><c>10921869967</c><c>-281442840552727</c><c>29400865633</c><c>5036810562</c><c>1808178167</c><c>579647564</c><c>31254575</c><c>238445536</c><c>2069473351</c></r>
@@ -111,14 +87,24 @@ module EgaugeRuby
          <r><c>5403225895</c><c>10756532683</c><c>10921852772</c><c>-281442840188667</c><c>29400832145</c><c>5036678472</c><c>1808013930</c><c>579578104</c><c>31254261</c><c>238445170</c><c>2065846784</c></r>
          <r><c>5402088568</c><c>10756554035</c><c>10921852772</c><c>-281442840172289</c><c>29400832145</c><c>5036671170</c><c>1808013347</c><c>579574207</c><c>31254241</c><c>238445154</c><c>2065625899</c></r>
          <r><c>5401035954</c><c>10756574659</c><c>10921852772</c><c>-281442840156061</c><c>29400832145</c><c>5036663673</c><c>1808012783</c><c>579570250</c><c>31254219</c><c>238445137</c><c>2065494560</c></r>
+         <r><c>5399900902</c><c>10756596178</c><c>10921852772</c><c>-281442840139710</c><c>29400832145</c><c>5036656369</c><c>1808012200</c><c>579566349</c><c>31254197</c><c>238445121</c><c>2065274764</c></r>
         </data>
         </group>
         XML
       }
       let!(:fake_request) do
         request = EgaugeRuby::Request.new(base_url: url, type: "stored", query_arguments: ['h', 'n=24'])
-        request.response = stored_xml
+        request.response = fake_stored
         request
+      end
+
+      before do
+        subject.request = fake_request
+        subject.data = Data.new(fake_request)
+      end
+
+      it "creates N registers for each row R, excluding the first row (N * R -1)" do
+        expect(subject.data.registers.count).to eq(264)
       end
 
       it "returns past register values given start and end time strings" do
@@ -126,12 +112,13 @@ module EgaugeRuby
                              timestamp: "2015-01-19 17:00:00 -0500",
                              interval: 3600,
                              type: "P",
-                             value: 5427592022,
-                             instantaneous: 456,}
+                             value: 5429234588,
+                             instantaneous: 421,}
 
-        expect(subject.stored("2015-01-19 18:00:00 -0500",
-                              "2015-01-18 18:00:00 -0500",
-                              :hours)).to  include(expected_results)
+        register_hash =
+          subject.stored("2015-01-19 18:00:00 -0500", "2015-01-18 18:00:00 -0500", :hours)["Grid"].first.to_hash
+
+        expect(register_hash).to include(expected_results)
       end
     end
 

@@ -24,9 +24,25 @@ module EgaugeRuby
     def stored(start_time, end_time, interval)
       start_time = Time.parse(start_time)
       end_time = Time.parse(end_time)
-      results = {}
-    end
 
+      seperator_args = {
+        seconds: 'S',
+        minutes: 'm',
+        hours: 'h',
+        days: 'd',
+      }
+
+      request_config = {
+        base_url: url,
+        type: "stored",
+        query_arguments: [seperator_args[interval], "f=#{start_time.to_i}", "t=#{end_time.to_i}"],
+      }
+
+      @request = Request.new(request_config)
+      @data = Data.new(request)
+
+      data.registers_to_hash
+    end
   end
 
   class Data
@@ -43,9 +59,7 @@ module EgaugeRuby
     end
 
     def registers_to_hash
-      results = {}
-      registers.each {|r| results[r.name] = r.to_hash}
-      results
+      registers.group_by{ |reg| reg.name }
     end
 
     def set_timestamp
@@ -78,21 +92,33 @@ module EgaugeRuby
           create_register_obj(current_register_to_hash(xml_reg))
         end
       when "stored"
-        xml_register_values = document.xpath('//r')
-        xml_column_collection = document.xpath('//cname')
+        xml_register_rows = document.xpath('//r')
+        xml_column_names = document.xpath('//cname')
 
-        xml_register_values.each_with_index do |value_collection, row_index|
+        xml_register_rows.each_with_index do |row, row_index|
           row_timestamp = timestamp - (row_index * interval)
-          values = value_collection.xpath('c')
+          values = row.xpath('c')
+
+          next if row_index == 0
 
           values.each_with_index do |value, index|
-            register_column = xml_column_collection[index]
-            new_reg = stored_register_to_hash(value, row_timestamp, register_column)
+            register_column = xml_column_names[index]
+            instantaneous = compare_values(row_index, index, value)
+            new_reg = stored_register_to_hash(value, instantaneous, row_timestamp, register_column)
             create_register_obj(new_reg)
           end
         end
       else
       end
+    end
+
+    def compare_values(row_index, value_index, value)
+      # Get the value at the same value index and row index -1
+
+      xml_register_rows = document.xpath('//r')
+      other_value = xml_register_rows[row_index-1].xpath('c')[value_index]
+
+     (other_value.text.to_i - value.text.to_i) / interval
     end
 
     def create_register_obj(reg)
@@ -104,14 +130,15 @@ module EgaugeRuby
       registers.push(reg_obj)
     end
 
-    def stored_register_to_hash(value, row_timestamp, register_column)
-      hash              = {}
-      hash[:timestamp]  = row_timestamp
-      hash[:interval]   = interval
-      hash[:name]       = register_column.text
-      hash[:type]       = register_column.attributes["t"].value
-      hash[:value]      = value.text.to_i
-      hash[:interval]   = document.xpath('//data').xpath("@time_delta").text.to_i
+    def stored_register_to_hash(value, instantaneous, row_timestamp, register_column)
+      hash                  = {}
+      hash[:timestamp]      = row_timestamp
+      hash[:interval]       = interval
+      hash[:name]           = register_column.text
+      hash[:type]           = register_column.attributes["t"].value
+      hash[:value]          = value.text.to_i
+      hash[:instantaneous]  = instantaneous
+      hash[:interval]       = document.xpath('//data').xpath("@time_delta").text.to_i
       hash
     end
 
@@ -142,7 +169,7 @@ module EgaugeRuby
 
     def to_hash
       hash = {}
-      hash[:timestamp]        = timestamp
+      hash[:timestamp]        = timestamp.to_s
       hash[:interval]         = interval
       hash[:name]             = name
       hash[:type]             = type
@@ -180,7 +207,6 @@ module EgaugeRuby
     end
 
     def join_query_args
-      # accepted = %w{tot noteam v1 inst}
       arguments = []
       @query_arguments.each do |arg|
         arguments.push(arg)
