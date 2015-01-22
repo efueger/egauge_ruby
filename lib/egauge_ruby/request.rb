@@ -1,8 +1,5 @@
-require 'rubygems'
 require 'rest-client'
 require 'json'
-require 'awesome_print'
-require 'pry'
 require 'nokogiri'
 
 module EgaugeRuby
