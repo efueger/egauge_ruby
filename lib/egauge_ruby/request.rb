@@ -227,7 +227,7 @@ module EgaugeRuby
     end
 
     def get_xml
-      RestClient.get(full_url) do |response, request, result, &block|
+      RestClient.get(full_url, timeout: 30) do |response, request, result, &block|
         case response.code
         when 200
           response
