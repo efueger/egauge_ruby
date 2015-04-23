@@ -189,6 +189,7 @@ module EgaugeRuby
     end
 
     describe '#to_json' do
+      # some test
     end
   end
 
