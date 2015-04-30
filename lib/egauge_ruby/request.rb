@@ -12,12 +12,17 @@ module EgaugeRuby
       @data = Data.new(request)
     end
 
+    # Get the current instantaneous values for all the registers on the egauge
     def current
       results = {}
       data.registers.each { |r| results[r.name] = r.instantaneous }
       results
     end
 
+    # Get stored values for all registers on the egauge at a given interval
+    # * +start_time+ - Beginning of time range to retrieve, inclusive
+    # * +end_time+ - End of time range to retrieve, inclusive
+    # * +interval+ - Values will be aggregated by the interval, sum_of_values/count_of_values
     def stored(start_time, end_time, interval)
       start_time = Time.parse(start_time)
       end_time = Time.parse(end_time)
